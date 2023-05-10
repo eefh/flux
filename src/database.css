@@ -1,0 +1,45 @@
+.db-wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(64, 79, 88, 0.309);
+    color: white;
+    display: flex;
+    align-items: center;
+    color: rgb(87, 102, 134);
+    justify-content: center;
+    user-select: none;
+    z-index: 99;
+    animation: db 100ms ease-in-out;
+}
+
+.database {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    background-color: rgb(255, 255, 255);
+    border-radius: 16px;
+    padding: 16px;
+    border: solid 2px rgba(31, 75, 137, 0.098);
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.248);
+    animation: db 100ms ease-in-out;
+}
+.hover {
+    background-color: rgb(222, 246, 255);
+    box-shadow: 0px 0px 20px rgb(175, 243, 255);
+}
+.upload {
+    font-size: 24px;
+}
+
+@keyframes db {
+    0% {
+        opacity: 0%;
+    }
+    100% {
+        opacity: 100%;
+    }
+}
