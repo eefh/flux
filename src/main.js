@@ -1,14 +1,11 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, nativeImage } = require('electron');
+const prompt = require('electron-prompt');
 
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { HumanChatMessage, SystemChatMessage } from "langchain/schema";
 import { run }  from "./agent";
 import ElectronStore from "electron-store";
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require('electron-squirrel-startup')) {
-  app.quit();
-}
 
 const store = new ElectronStore();
 
@@ -23,37 +20,71 @@ const createWindow = () => {
     },
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 12, y: 12 },
-    
+    closable: false
   });
 
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
-
+  mainWindow.closable = false;
+  mainWindow.movable = false;
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
+  console.log("HELLOOOOOOOOOOO");
   const hotkey = process.platform === 'darwin' ? 'Cmd+Shift+F' : 'Ctrl+Shift+F';
   const ret = globalShortcut.register(hotkey, () => {
-    mainWindow.show();
+    if (mainWindow.isDestroyed()) {
+      createWindow();
+    } else if (mainWindow.isVisible()) {
+      mainWindow.hide();
+    }
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.webContents.send('main-window-ready');
   });
+  mainWindow.on('close', (event) => {
+    // Prevent the default close action
+    event.preventDefault();
+    // Hide the window instead of destroying it
+    mainWindow.hide();
+  });
+  
   // Open the DevTools
 };
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
+async function askForApiKey() {
+  const apiKey = await prompt({
+    title: 'Enter your API key',
+    label: 'API Key:',
+    inputAttrs: {
+      type: 'text',
+      placeholder: 'Enter your API key here'
+    },
+    type: 'input'
+  });
+
+  if (apiKey === null) {
+    // User canceled the prompt, you can decide what to do, e.g., exit the app
+    app.quit();
+  } else {
+    // Save the API key, for example, in a global variable or to a configuration file
+    global.apiKey = apiKey;
+
+    // Continue with creating the main window and starting your app
+    createMainWindow();
+  }
+}
 
 
-// Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+async function runApp() {
+  // Call the askForApiKey function and wait for its completion
+  await askForApiKey();
 
-
-app.whenReady().then(() => {
-  // Create the tray instance with the icon
-  const icon = nativeImage.createFromPath('/images/icon2Template.png')
+  // Now, create the tray instance with the icon
+  const icon = nativeImage.createFromPath('/images/icon2Template.png');
 
   tray = new Tray(icon);
 
@@ -68,16 +99,14 @@ app.whenReady().then(() => {
 
   // Optionally, you can also add a tooltip for the tray icon
   tray.setToolTip('Your App Name');
-});
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+  // Create the main application window
+  createWindow();
+}
+
+app.whenReady().then(runApp);
+
+
 
 app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
@@ -88,9 +117,12 @@ app.on('activate', () => {
 
 });
 
+
+
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 const chat = new ChatOpenAI({ temperature: 0.8 });
+
 
 /*const updateZapierNlaApiKey = (newApiKey) => {
   process.env.ZAPIER_NLA_API_KEY = newApiKey;
@@ -106,7 +138,10 @@ function sendSavedConversation(event) {
   console.log("GET HISTORY: ", savedConversation);
   event.sender.send('saved-conversation', savedConversation);
 }
-
+app.on('appWillUnmount', () => {
+  // Restore the app's state
+  app.restoreState();
+});
 let database = '';
 ipcMain.on("uploadFile", async (event, fileContent) => {
   // Pass the file content to initializeQATool in vectorDB.js

@@ -1,11 +1,11 @@
 {
   "name": "flux",
   "productName": "Flux",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "AI desktop assistant",
   "main": ".webpack/main",
   "scripts": {
-    "start": "electron-forge start",
+    "start": "npm run clean && electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
@@ -16,7 +16,11 @@
       "makers": [
         {
           "name": "@electron-forge/maker-zip",
-          "platforms": ["darwin", "linux", "windows"]
+          "platforms": [
+            "darwin",
+            "linux",
+            "windows"
+          ]
         }
       ]
     }
@@ -43,13 +47,17 @@
     "dotenv-webpack": "^8.0.1",
     "electron": "24.1.2",
     "node-loader": "^2.0.0",
+    "rimraf": "^5.0.1",
     "style-loader": "^3.3.2"
   },
   "dependencies": {
+    "@electron/osx-sign": "^1.0.4",
     "cheerio": "^1.0.0-rc.12",
     "chromadb": "^1.4.1",
     "cohere-ai": "^5.1.0",
     "dotenv": "^16.0.3",
+    "electron-packager": "^17.1.1",
+    "electron-prompt": "^1.7.0",
     "electron-squirrel-startup": "^1.0.0",
     "electron-store": "^8.1.0",
     "electron-util": "^0.17.2",
