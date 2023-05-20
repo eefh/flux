@@ -19,24 +19,20 @@ const createWindow = () => {
       nodeIntegration: true,
     },
     titleBarStyle: 'hidden',
-    trafficLightPosition: { x: 12, y: 12 },
-    closable: false
+    trafficLightPosition: { x: 12, y: 12 }
   });
 
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
-  mainWindow.closable = false;
-  mainWindow.movable = false;
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
-  console.log("HELLOOOOOOOOOOO");
   const hotkey = process.platform === 'darwin' ? 'Cmd+Shift+F' : 'Ctrl+Shift+F';
   const ret = globalShortcut.register(hotkey, () => {
-    if (mainWindow.isDestroyed()) {
-      createWindow();
-    } else if (mainWindow.isVisible()) {
+    if (mainWindow.isVisible()) {
       mainWindow.hide();
+    } else {
+      mainWindow.show();
     }
   });
 
@@ -49,13 +45,17 @@ const createWindow = () => {
     // Hide the window instead of destroying it
     mainWindow.hide();
   });
-  
+
+  app.on('before-quit', () => {
+    mainWindow.removeAllListeners('close');
+    mainWindow.close();
+  });
   // Open the DevTools
 };
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
-async function askForApiKey() {
+/*async function askForApiKey() {
   const apiKey = await prompt({
     title: 'Enter your API key',
     label: 'API Key:',
@@ -76,12 +76,11 @@ async function askForApiKey() {
     // Continue with creating the main window and starting your app
     createMainWindow();
   }
-}
+}*/
 
 
 async function runApp() {
   // Call the askForApiKey function and wait for its completion
-  await askForApiKey();
 
   // Now, create the tray instance with the icon
   const icon = nativeImage.createFromPath('/images/icon2Template.png');
@@ -107,13 +106,13 @@ async function runApp() {
 app.whenReady().then(runApp);
 
 
-
 app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+
 
 });
 

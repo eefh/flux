@@ -1,4 +1,6 @@
 module.exports = {
+  packagerConfig: {},
+  rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
@@ -6,7 +8,7 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-zip',
-      platforms: ['darwin', 'linux', 'windows'],
+      platforms: ['darwin'],
     },
     {
       name: '@electron-forge/maker-deb',
