@@ -5,7 +5,14 @@ import { ChatOpenAI } from "langchain/chat_models/openai";
 import { HumanChatMessage, SystemChatMessage } from "langchain/schema";
 import { run }  from "./agent";
 import ElectronStore from "electron-store";
+const { Configuration, OpenAIApi } = require("openai");
 
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
+let zapierNlaApiKey = process.env.ZAPIER_NLA_API_KEY || "";  
 
 const store = new ElectronStore();
 
@@ -77,6 +84,7 @@ const createWindow = () => {
     createMainWindow();
   }
 }*/
+app.on('ready', createWindow);
 
 
 async function runApp() {
@@ -117,20 +125,17 @@ app.on('activate', () => {
 });
 
 
-
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 const chat = new ChatOpenAI({ temperature: 0.8 });
 
-
-/*const updateZapierNlaApiKey = (newApiKey) => {
-  process.env.ZAPIER_NLA_API_KEY = newApiKey;
+const updateZapierNlaApiKey = (newApiKey) => {
+  zapierNlaApiKey = newApiKey;
 };
 
 ipcMain.on('update-zapier-nla-api-key', (event, newApiKey) => {
   updateZapierNlaApiKey(newApiKey);
 });
-*/
 
 function sendSavedConversation(event) {
   const savedConversation = store.get('history');
@@ -153,6 +158,26 @@ ipcMain.on('request-saved-conversation', (event) => {
   sendSavedConversation(event);
 });
 
+ipcMain.on('get-thought', async (event, userInput) => {
+  try {
+    // Call the GPT-3 API with the user input
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [{role: "system", content: "Respond only with a brief 'Thought' (thinking out loud) summary, for example, if the user asks a conversational question respond with: 🗣️ Conversation: insert brief thought here. Keep it brief to under 10 words, with an emoji at the start. currently you have tools such as database search, web browsing/search, etc."},{role: "user", content: userInput}],
+    });
+    console.log(completion.data.choices[0].message);
+
+    // Get the thought from the API response
+    const thought = completion.data.choices[0].message.content;
+
+    // Send the thought back to the renderer process
+    event.sender.send('thought-response', thought);
+  } catch (error) {
+    console.error('Error calling GPT-3:', error);
+    event.sender.send('thought-response', 'Error: Failed to get thought data');
+  }
+});
+
 
 ipcMain.on('my-channel', async (event, conversation) => {
   console.log('Message received from renderer:', conversation);
@@ -160,7 +185,7 @@ ipcMain.on('my-channel', async (event, conversation) => {
   let response = '';
   // Your logic to handle the message
   if (process.env.OPENAI_API_KEY){
-    response = await run(conversation[0], conversation[1], event, database);
+    response = await run(conversation[0], conversation[1], event, database, zapierNlaApiKey);
   } else {
      response = 'Please set your API key';
   }

@@ -203,9 +203,9 @@ body {
   flex-direction: column;
   justify-content: flex-end;
   width: 100%;
+  padding-top: 200px;
   height: 100%;
 }
-
 .message {
   padding: 0px 16px 0px 16px;
   background-color: rgb(0, 108, 239);
@@ -257,6 +257,18 @@ body {
   overflow-wrap: normal;
   background-color: #ffffff9d;
   font-size: 12px;
+}
+
+.thought {
+  border-radius: 6px;
+  border: solid 2px rgb(238, 242, 246);
+  background-color: white;
+  padding: 8px 8px 8px 8px;
+  margin: 0px 16px 4px 16px;
+  font-size: 12px;
+  color: rgb(29, 29, 29);
+  box-shadow: 0px 3px 6px rgba(0, 77, 184, 0.244) ;
+  width: fit-content;
 }
 
 @keyframes spawn {

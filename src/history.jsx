@@ -1,37 +1,52 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import './history.css';
-import { Plus } from 'iconoir-react';
+import { Plus, Cancel } from 'iconoir-react';
 const History = React.forwardRef((props, ref) => {
 
     const handleNewChat = () => {
         if (props.messages.length) {
+          // Check if the current chat is already in the history
+          const isCurrentChatInHistory = props.history.some(
+            (chat) => JSON.stringify(chat) === JSON.stringify(props.messages)
+          );
+      
+          // If the current chat is not in the history, add it
+          if (!isCurrentChatInHistory) {
             props.setLoading(false);
             props.setHistory([props.messages, ...props.history]);
-            props.setMessages([]);
-            console.log(props.history);
+          }
+      
+          // Clear the current messages
+          props.setMessages([]);
         }
-    }
-    const handleChatLoad = (i) => {
-        if (props.messages.length) {
-            props.setLoading(false);
-            props.setHistory([props.messages, ...props.history]);
-
-            props.setMessages([props.history[i]]);
-        } else {
-            console.log("Index: ", i);
-            console.log(props.history)
-            console.log([props.history[i]]);
-            props.setMessages(props.history[i]);
+      };
+      
+      const handleChatLoad = (i) => {
+        const isCurrentChatSelected =
+          JSON.stringify(props.messages) === JSON.stringify(props.history[i]);
+      
+        if (!isCurrentChatSelected) {
+          // If the selected chat is not the same, store current messages if not present in history
+          const isCurrentChatInHistory = props.history.some(
+            (chat) => JSON.stringify(chat) === JSON.stringify(props.messages)
+          );
+      
+          if (props.messages.length && !isCurrentChatInHistory) {
+            props.setHistory((prevHistory) => [props.messages, ...prevHistory]);
+          }
+      
+          // Set the new messages using the previously saved data in the history
+          props.setMessages(props.history[i]);
         }
-    }
+      };
     return (
         <div className='history' ref={ref}>
             <div className='newchat' onClick={handleNewChat}>
                 <Plus/>
             </div>
             {props.history ? props.history.map((chat, i) => {
-                return <div className='historyChat' onClick={() => handleChatLoad(i)} key={i}><strong>{chat[0].content}</strong></div>
+                return <div className='historyChat' onClick={() => handleChatLoad(i)} key={i}><strong>{chat[0].content}</strong><Cancel className='cancel'></Cancel></div>
             }) : null}
         </div>
     )

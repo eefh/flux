@@ -40,19 +40,41 @@ const handleFileUpload = (fileContent) => {
 };
 
 
-    const handleClick = (content) => {
-      setLoading(true);
-      if (userInput && window.electron?.ipcRenderer) {
-        setMessages([...messages, { role: 'user', content: userInput }]);
-        setUserInput("");
-        window.electron.ipcRenderer.send('my-channel', [userInput, messages, history]);
-        console.log("HISTORY: ", history);
-      } else if (content) {
-        setMessages([...messages, { role: 'user', content: content }]);
-        setUserInput("");
-        window.electron.ipcRenderer.send('my-channel', [content, messages, history]);
-      }
-    };
+const handleClick = (content) => {
+  setLoading(true);
+  if (userInput && window.electron?.ipcRenderer) {
+    setMessages([...messages, { role: 'user', content: userInput }]);
+    setUserInput("");
+    sendThought(userInput);
+    window.electron.ipcRenderer.send('my-channel', [userInput, messages, history]);
+    console.log("HISTORY: ", history);
+  } else if (content) {
+    setMessages([...messages, { role: 'user', content: content }]);
+    setUserInput("");
+    sendThought(content);
+    window.electron.ipcRenderer.send('my-channel', [content, messages, history]);
+  }
+};
+
+useEffect(() => {
+  // Listener for thoughts
+  const handleThoughtResponse = (thought) => {
+    console.log("Received thought from the main process:", thought);
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { role: 'thought', content: thought },
+    ]);
+  };
+
+  // Add listener for 'thought-response'
+  window.electron.ipcRenderer.on('thought-response', handleThoughtResponse);
+
+  // Clean up the listeners when the component unmounts
+  return () => {
+    window.electron.ipcRenderer.removeListener('thought-response', handleThoughtResponse);
+  };
+}, []);
+
 
     useEffect(() => {
       const handleSavedConversation = (savedConversation) => {
@@ -125,6 +147,12 @@ const handleFileUpload = (fileContent) => {
       };
     }, []);
 
+    const sendThought = (input) => {
+      if (input && window.electron?.ipcRenderer) {
+        window.electron.ipcRenderer.send('get-thought', input);
+      }
+    };
+    
     /*useEffect(() => {
       try {
         if (!window.electron?.ipcRenderer) return;
@@ -163,6 +191,7 @@ const handleFileUpload = (fileContent) => {
       handleClick(`Let's go with "${content.trim()}"`);
       setUserInput('');
     }
+
     // Update the store whenever the state changes
     function processAssistantMessageContent(content, handleItemClick) {
       const regex = /~~~(\w+)\s+([\s\S]*?)~~~/g;
@@ -252,6 +281,12 @@ const handleFileUpload = (fileContent) => {
               </p>
             </div>
           );
+        } else if (msg.role === 'thought') {
+          return (
+            <div className='thought'>
+              <em>{msg.content}</em>
+            </div>
+          )
         } else {
           return (
             <div className="action" key={i}>

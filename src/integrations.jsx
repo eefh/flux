@@ -9,10 +9,11 @@ const Integrations = (props) => {
 
     const handleSubmit = () => {
         if (apiKey) {
-            setSubmitted(true);
-            window.electron.ipcRenderer.send('update-zapier-nla-api-key', apiKey);
+          setSubmitted(true);
+          window.electron.ipcRenderer.send('update-zapier-nla-api-key', apiKey);
         }
-    }
+      };
+      
     return (
         <div className='settings'>
             <div className='top'>

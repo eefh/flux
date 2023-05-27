@@ -11,9 +11,9 @@ import { WebBrowser } from "langchain/tools/webbrowser";
 
 require('dotenv').config();
 
-export const run = async (message, messages, event, database) => {
+export const run = async (message, messages, event, database, zapierKey) => {
   process.env.LANGCHAIN_HANDLER = "langchain";
-  const model = new ChatOpenAI({ temperature: 0.8, modelName: 'gpt-4' });
+  const model = new ChatOpenAI({ temperature: 0.8, modelName: 'gpt-3.5-turbo' });
   const embeddings = new OpenAIEmbeddings();
   const callbackManager = CallbackManager.fromHandlers({
     async handleAgentAction(action) {
@@ -21,16 +21,25 @@ export const run = async (message, messages, event, database) => {
       event.sender.send('agentAction', action);
     }
   });
+
   console.log(`Database?: ${database ? `True` : `False`}`);
-  const zapier = new ZapierNLAWrapper();
-  const toolkit = await ZapierToolKit.fromZapierNLAWrapper(zapier);
   const qaTool = await initializeQATool(database); 
+  const tools = [
+    new SerpAPI(),
+    qaTool,
+    new WebBrowser({ model, embeddings }),
+  ];
+  if (zapierKey) {
+    const zapier = new ZapierNLAWrapper({ apiKey: zapierKey });
+    const toolkit = await ZapierToolKit.fromZapierNLAWrapper(zapier);
+    tools.push(...toolkit.tools);
+  }
+    
   const executor = await initializeAgentExecutorWithOptions(
-    [...toolkit.tools, new SerpAPI(), qaTool, new WebBrowser({ model, embeddings }),
-    ],
+    tools,
     model,
     {
-        agentType: "chat-conversational-react-description",
+        agentType: "chat-zero-shot-react-description",
         verbose: true,
         callbackManager: callbackManager
     }
