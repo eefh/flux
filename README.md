@@ -42,7 +42,17 @@ npm start
 
 ### API Keys and Configuration
 
-This application uses APIs to fetch contextual information and perform various tasks. You need to obtain API keys and configure the app. Please follow the guide in `CONFIGURATION.md`.
+To configure Flux AI Desktop Assistant, create a `.env` file in the root directory of the project, and enter the API keys.
+
+Include the following content in your `.env` file:
+
+```
+OPENAI_API_KEY=<your_openai_api_key>
+SERP_API_KEY=<your_serpapi_api_key>
+```
+
+Replace `<your_openai_api_key>` and `<your_serpapi_api_key>` with the API keys you obtained from their respective websites.
+
 
 ## Usage
 
