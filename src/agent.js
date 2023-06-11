@@ -1,6 +1,6 @@
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { initializeAgentExecutorWithOptions, ZapierToolKit, OpenApiToolkit } from "langchain/agents";
-import { SerpAPI, Calculator, ChainTool, ZapierNLAWrapper, JsonSpec, JsonObject } from "langchain/tools";
+import { SerpAPI, Calculator, ChainTool, ZapierNLAWrapper, JsonSpec, JsonObject, RequestsGetTool, RequestsPostTool, AIPluginTool } from "langchain/tools";
 import { CallbackManager } from "langchain/callbacks";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { StructuredOutputParser } from "langchain/output_parsers";
@@ -12,9 +12,8 @@ import { WebBrowser } from "langchain/tools/webbrowser";
 require('dotenv').config();
 
 export const run = async (message, messages, event, database, zapierKey) => {
-  process.env.LANGCHAIN_HANDLER = "langchain";
-  const model = new ChatOpenAI({ temperature: 0.8, modelName: 'gpt-3.5-turbo' });
-  const embeddings = new OpenAIEmbeddings();
+
+  const model = new ChatOpenAI({ temperature: 0.4, modelName: 'gpt-3.5-turbo' });
   const callbackManager = CallbackManager.fromHandlers({
     async handleAgentAction(action) {
       console.log("handleAgentAction", action);
@@ -27,7 +26,12 @@ export const run = async (message, messages, event, database, zapierKey) => {
   const tools = [
     new SerpAPI(),
     qaTool,
-    new WebBrowser({ model, embeddings }),
+    /*new WebBrowser({ model, embeddings }),
+    new RequestsGetTool(),
+    new RequestsPostTool(),
+    await AIPluginTool.fromPluginUrl(
+      "https://www.klarna.com/.well-known/ai-plugin.json"
+    )*/
   ];
   if (zapierKey) {
     const zapier = new ZapierNLAWrapper({ apiKey: zapierKey });
@@ -39,7 +43,7 @@ export const run = async (message, messages, event, database, zapierKey) => {
     tools,
     model,
     {
-        agentType: "chat-zero-shot-react-description",
+        agentType: "chat-conversational-react-description",
         verbose: true,
         callbackManager: callbackManager
     }
@@ -49,7 +53,7 @@ export const run = async (message, messages, event, database, zapierKey) => {
     returnMessages: true,
     memoryKey: "chat_history",
     inputKey: "input",
-    chatHistory: new ChatMessageHistory([new SystemChatMessage('You are a helpful assistant, if appropriate, walkthrough the user with step by step numbered directions separated by new line, with ENDLIST at the end of the last numbered item in the list. Write all code in a special codeblock using ~~~language ~~~, one-line code snippets should also use ~~~ ~~~'), ...messages.map(msg => {
+    chatHistory: new ChatMessageHistory([new SystemChatMessage('You are a helpful assistant, when giving tutorials or helping the user with a question, walkthrough the user with step by step numbered directions separated by new line, with ENDLIST at the end of the last numbered item in the list, try doing this without using search if you can. Write all code in a special codeblock using ~~~language ~~~, one-line code snippets should also use ~~~ ~~~'), ...messages.map(msg => {
         return msg.role === 'user' ? new HumanChatMessage(msg.content) : new AIChatMessage(msg.content);
     })]),
   });

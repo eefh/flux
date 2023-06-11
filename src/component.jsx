@@ -21,8 +21,8 @@ const MyComponent = () => {
     const [ toggleDb , setToggleDb] = useState(false);
     const [ chatTitle, setChatTitle ] = useState('');
     const [ history, setHistory ] = useState([]);
-
-
+    const [thoughtLoading, setThoughtLoading] = useState(false);
+    const [ APIs, setAPIs ] = useState([]); 
     const handleDocumentClick = (e) => {
       if (toggleHistory && historyRef.current && !historyRef.current.contains(e.target)) {
         // If click is outside the History component, set toggleHistory to false
@@ -42,30 +42,60 @@ const handleFileUpload = (fileContent) => {
 
 const handleClick = (content) => {
   setLoading(true);
+  setThoughtLoading(true);
   if (userInput && window.electron?.ipcRenderer) {
-    setMessages([...messages, { role: 'user', content: userInput }]);
+    setMessages([
+      ...messages, 
+      { role: 'user', content: userInput }, 
+      { role: 'ai', content: "", thought: "", actionTitle: "", actionContent: "", actionLog: "" }
+    ]);
     setUserInput("");
     sendThought(userInput);
     window.electron.ipcRenderer.send('my-channel', [userInput, messages, history]);
     console.log("HISTORY: ", history);
   } else if (content) {
-    setMessages([...messages, { role: 'user', content: content }]);
+    setMessages([
+      ...messages, 
+      { role: 'user', content: content }, 
+      { role: 'ai', content: "", thought: "", actionTitle: "", actionContent: "", actionLog: "" }
+    ]);
     setUserInput("");
     sendThought(content);
     window.electron.ipcRenderer.send('my-channel', [content, messages, history]);
   }
 };
 
+const updateAIMessage = (newContent) => {
+  setMessages((prevMessages) => {
+    // Find the index of the last AI message
+    let index = prevMessages.length - 1;
+    while (index >= 0 && prevMessages[index].role !== 'ai') {
+      index--;
+    }
+
+    // If an AI message found, update it and return the new array
+    if (index >= 0) {
+      const updatedMessage = { ...prevMessages[index], ...newContent };
+      return [
+        ...prevMessages.slice(0, index),
+        updatedMessage,
+        ...prevMessages.slice(index + 1),
+      ];
+    }
+
+    // If no AI message, return the previous messages unchanged
+    return prevMessages;
+  });
+};
+
 useEffect(() => {
   // Listener for thoughts
   const handleThoughtResponse = (thought) => {
     console.log("Received thought from the main process:", thought);
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { role: 'thought', content: thought },
-    ]);
+    updateAIMessage({thought});
+    setThoughtLoading(false);
   };
-
+  
   // Add listener for 'thought-response'
   window.electron.ipcRenderer.on('thought-response', handleThoughtResponse);
 
@@ -119,22 +149,20 @@ useEffect(() => {
       // Listener for agent actions
       const handleAgentAction = (action) => {
         console.log("Received agent action:", action);
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {role: 'action', title: action.tool, content: action.toolInput, log: action.log}
-        ]);
-        // Process the action data here
+        updateAIMessage({
+          actionTitle: action.tool,
+          actionContent: action.toolInput,
+          actionLog: action.log,
+        });
       };
   
       // Listener for 'my-channel' responses
       const handleMessageResponse = (data) => {
         console.log('Received data from the main process:', data);
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { role: 'assistant', content: data },
-        ]);
+        updateAIMessage({content: data});
         setLoading(false);
       };
+      
   
       // Add listeners
       window.electron.ipcRenderer.on('agentAction', handleAgentAction);
@@ -198,7 +226,7 @@ useEffect(() => {
       let match;
       let lastIndex = 0;
       const elements = [];
-    
+      
       while ((match = regex.exec(content)) !== null) {
         if (match.index > lastIndex) {
           const textBeforeCode = content.slice(lastIndex, match.index);
@@ -233,7 +261,9 @@ useEffect(() => {
       }
       const [beforeEndList, afterEndList] = content.split('ENDLIST');
       const splitInstructions = beforeEndList.split(/(\d+\.)/);
-    
+      if (!content.match(/^\d+\. $|^ENDLIST$/m)) {
+        return [<span>{content}</span>];
+      }
       const numberedElements = splitInstructions.reduce((acc, part, index) => {
         if (/^\d+\.$/.test(part)) {
           acc.push(<strong key={index} className="listNumber">{part}</strong>);
@@ -267,50 +297,48 @@ useEffect(() => {
       <div className="chat-messages-wrapper">
         <div className='chat-messages'>
         {messages.map((msg, i) => {
-        if (msg.role === 'user') {
-          return (
-            <div className="message" key={i}>
-              <p>{msg.content}</p>
-            </div>
-          );
-        } else if (msg.role === 'assistant') {
-          return (
-            <div className="ai" key={i}>
-              <p>
-                {processAssistantMessageContent(msg.content, handleItemClick)}
-              </p>
-            </div>
-          );
-        } else if (msg.role === 'thought') {
-          return (
-            <div className='thought'>
-              <em>{msg.content}</em>
-            </div>
-          )
-        } else {
-          return (
-            <div className="action" key={i}>
-              <p>
-                <strong>Action: {msg.title}</strong>
-              </p>
-              <p>
-                <em>{msg.content}</em>
-              </p>
-              <CodeBlock
-                text={msg.log ? msg.log.replace(/^```json\s+|\s+```$/g, '') : ""}
-                theme={monoBlue}
-                language="json"
-                showLineNumbers={false}
-              />
-            </div>
-          );
-        }
-      })}
-            {//<div className='action'>🤖 <strong>Thinking:</strong> <em>I need more context to guide you in answering this question. What specifically are you attempting to style? Classes? A webpage? Network requests?</em></div>
-            }{loading ? <div className='loading'></div> : null}
+  if (msg.role === 'user') {
+    return (
+      <div className="message" key={i}>
+        <p>{msg.content}</p>
+      </div>
+    );
+  } else {
+    return (
+      <>{msg.thought || msg.content ? <div className="ai" key={i}>
+        {msg.thought.length && <em className='thought'>{msg.thought}</em>}
+        {msg.actionTitle && (
+          <div className='action'>
+            <p>
+              <strong>Action: {msg.actionTitle}</strong>
+            </p>
+            <p>
+              <em>{msg.actionContent}</em>
+            </p>
+            <CodeBlock
+              text={msg.actionLog ? msg.actionLog.replace(/^```json\s+|\s+```$/g, '') : ''}
+              theme={monoBlue}
+              language="json"
+              showLineNumbers={false}
+            />
+          </div>
+        )}
+
+        {msg.content &&
+          <p className='aimessage'>{processAssistantMessageContent(msg.content, handleItemClick)}</p>}
+      </div> : null}
+          
+      </>
+    );
+  }
+})}
+            
+            {loading && thoughtLoading ? <p className='typing'>Reading...</p> : loading && !thoughtLoading ? <p className='typing'>Typing...</p> : null}
         </div>
+
         </div>
       </div>
+
       <div className='input-container'>
         <div className='input-wrapper'>
             <input onKeyDown={keyDown} placeholder='Ask me anything...' className='user-input' onChange={(e) => setUserInput(e.target.value)} value={userInput}></input>
@@ -319,7 +347,7 @@ useEffect(() => {
       </div>
       {toggleOption ? <Settings setToggleOption={setToggleOption}/> : null}
       {toggleHistory ? <History ref={historyRef} history={history} setLoading={setLoading} setMessages={setMessages} messages={messages} setHistory={setHistory}/> : null}
-      {toggleIntegrations ? <Integrations setToggleIntegrations={setToggleIntegrations}/> : null}
+      {toggleIntegrations ? <Integrations setToggleIntegrations={setToggleIntegrations} APIs={APIs} setAPIs={setAPIs}/> : null}
       {toggleDb ? <DbMenu ref={dbRef} handleFileUpload={handleFileUpload} /> : null}
     </div>
   );

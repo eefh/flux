@@ -17,9 +17,10 @@ export async function initializeQATool(fileContent) {
     const chain = VectorDBQAChain.fromLLM(model, vectorStore);
   
     return new ChainTool({
-      name: "database-qa",
+      name: "user-database-qa",
       description:
-        "Database QA - useful for when you need to ask questions about data within the database.",
+        "User-uploaded Database QA - useful for when you need to ask questions about data within a database uploaded by the user.",
       chain: chain,
     });
   }
+  

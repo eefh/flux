@@ -4,8 +4,7 @@ import MyComponent from './component.jsx';
 
 function render() {
   ReactDOM.render(
-    <> <MyComponent/>
-    </>
+      <MyComponent/>
      ,
     document.body
   );
